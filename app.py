@@ -60,7 +60,11 @@ def predict(model, text, melody, duration, topk, topp, temperature, cfg_coef):
         audio_write(
             file.name, output, MODEL.sample_rate, strategy="loudness",
             loudness_headroom_db=16, loudness_compressor=True, add_suffix=False)
-        waveform_video = gr.make_waveform(file.name)
+        filename = file.name
+    return filename
+
+def to_waveform_video(filename):
+    waveform_video = gr.make_waveform(filename)
     return waveform_video
 
 
@@ -99,7 +103,7 @@ def ui(**kwargs):
                     cfg_coef = gr.Number(label="Classifier Free Guidance", value=3.0, interactive=True)
             with gr.Column():
                 output = gr.Video(label="Generated Music")
-        submit.click(predict, inputs=[model, text, melody, duration, topk, topp, temperature, cfg_coef], outputs=[output])
+        submit.click(predict, inputs=[model, text, melody, duration, topk, topp, temperature, cfg_coef], outputs=[output]) # todo
         gr.Examples(
             fn=predict,
             examples=[
@@ -177,6 +181,11 @@ def ui(**kwargs):
         interface.queue().launch(**launch_kwargs, max_threads=1)
 
 
+    
+import flask
+from flask import request
+from flask_cors import CORS
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -214,3 +223,34 @@ if __name__ == "__main__":
         share=args.share,
         listen=args.listen
     )
+
+app = flask.Flask(__name__)
+CORS(app)
+
+@app.route('/example', methods=['POST'])
+def example():
+    print("received request successfully")
+    if request.method == 'POST':
+        return 'post response'
+    else:
+        return "This endpoint only processes POST"
+    
+@app.route('/generate', methods=['POST'])
+def generate():
+    model = 'large'
+    text = '80s rock music'
+    melody = None
+    duration = 10
+    topk = 250
+    topp = 0
+    temperature = 1.0
+    cfg_coef = 3.0
+
+    print("generating...")
+    result = predict(model=model, text=text, melody=melody, duration=duration, topk=topk, topp=topp, temperature=temperature, cfg_coef=cfg_coef)    
+    print("completed")
+
+    if request.method == 'POST':
+        return result
+    else:
+        return "This endpoint only processes POST"
