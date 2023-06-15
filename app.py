@@ -183,7 +183,7 @@ def ui(**kwargs):
 
     
 import flask
-from flask import request
+from flask import request, send_file, make_response
 from flask_cors import CORS
 
 if __name__ == "__main__":
@@ -237,8 +237,9 @@ def example():
     
 @app.route('/generate', methods=['POST'])
 def generate():
-    model = 'large'
-    text = '80s rock music'
+    request_json = request.get_json()
+    model = request_json.get('small')
+    text = request_json.get('prompt')
     melody = None
     duration = 10
     topk = 250
@@ -247,10 +248,32 @@ def generate():
     cfg_coef = 3.0
 
     print("generating...")
-    result = predict(model=model, text=text, melody=melody, duration=duration, topk=topk, topp=topp, temperature=temperature, cfg_coef=cfg_coef)    
+    path_to_file = predict(model=model, text=text, melody=melody, duration=duration, topk=topk, topp=topp, temperature=temperature, cfg_coef=cfg_coef)    
     print("completed")
 
     if request.method == 'POST':
-        return result
+        response = make_response(send_file(
+            path_to_file, 
+            mimetype="audio/wav", 
+            as_attachment=True, 
+            download_name="test.wav"))
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+    else:
+        return "This endpoint only processes POST"
+
+@app.route('/file', methods=['GET'])
+def file():
+
+    path_to_file = 'E:\\Projects\\github\\audiocraft\\assets\\bach.mp3'
+
+    if request.method == 'GET':
+        response = make_response(send_file(
+            path_to_file, 
+            mimetype="audio/mp3", 
+            as_attachment=True, 
+            download_name="test.mp3"))
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     else:
         return "This endpoint only processes POST"
